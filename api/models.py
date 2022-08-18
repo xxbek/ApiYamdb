@@ -17,7 +17,7 @@ class NewUser(AbstractUser):
     """Class for user representation"""
     email = models.EmailField(unique=True, db_index=True, verbose_name='Электронная почта')
     confirmation_code = models.CharField(max_length=100, blank=True, unique=True, null=True, editable=True,
-                                         verbose_name='Крд подтверждения')
+                                         verbose_name='Код подтверждения')
 
     bio = models.TextField(blank=True, verbose_name='Об авторе')
     role = models.CharField(max_length=50, choices=UserRoles.choices, default=UserRoles.USER,
