@@ -45,14 +45,14 @@ class Title(models.Model):
     year = models.PositiveSmallIntegerField(validators=[date_not_in_future])
     description = models.TextField(blank=True)
     genre = models.ForeignKey(Genre, on_delete=models.SET_NULL, null=True, related_name='titles')
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL,blank=True,
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, blank=True,
                                  null=True, related_name='categories')
 
 
 class Review(models.Model):
-    text = models.TextField(max_length=6000, blank=True)
+    text = models.TextField(max_length=6000, blank=False)
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
-    scope = models.PositiveSmallIntegerField(validators=[MinValueValidator(0), MaxValueValidator(10)])
+    scope = models.IntegerField(default=1, validators=[MaxValueValidator(10), MinValueValidator(1)])
     pub_date = models.DateField(auto_now_add=True)
     title = models.ForeignKey(Title, on_delete=models.CASCADE, related_name='reviews',
                               verbose_name='Произведение', null=True)
