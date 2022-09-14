@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Title, Genre, Category
+from .models import Title, Genre, Category, Review
 
 User = get_user_model()
 
@@ -20,33 +20,63 @@ class UsersSerializer(serializers.ModelSerializer):
         fields = ['first_name', 'last_name', 'username', 'bio', 'email', 'role']
 
 
-class TitleSerializerList(serializers.ModelSerializer):
-    genre = serializers.ReadOnlyField(source='genre.name')
-    category = serializers.ReadOnlyField(source='category.name')
-    rating = serializers.IntegerField()
-
+class CategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Title
-        fields = ['id', 'name', 'year', 'rating', 'description', 'genre', 'category']
-
-
-class TitleSerializerGet(serializers.Serializer):
-    titles_id = serializers.IntegerField(required=True)
+        model = Category
+        fields = (
+            "name",
+            "slug",
+        )
 
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
-        fields = ['name', 'slug']
+        fields = (
+            "name",
+            "slug",
+        )
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class CategoryField(serializers.SlugRelatedField):
+    def to_representation(self, value):
+        serializer = CategorySerializer(value)
+        return serializer.data
+
+
+class GenreField(serializers.SlugRelatedField):
+    def to_representation(self, value):
+        serializer = GenreSerializer(value)
+        return serializer.data
+
+
+class TitleSerializer(serializers.ModelSerializer):
+    category = CategoryField(slug_field='slug', queryset=Category.objects.all(), required=False)
+    genre = GenreField(slug_field='slug', queryset=Genre.objects.all(), many=True)
+    rating = serializers.IntegerField(required=False)
+
     class Meta:
-        model = Category
-        fields = ['name', 'slug']
+        fields = ('id', 'name', 'year', 'rating', 'description', 'genre', 'category')
+        model = Title
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+
+    author = serializers.SlugRelatedField(
+        read_only=True, slug_field="username", many=False
+    )
+
+    def validate(self, attrs):
+        author = (self.context["request"].user.id,)
+        title = self.context["view"].kwargs.get("title_id")
+        message = "Author review already exist"
+        if (
+            not self.instance
+            and Review.objects.filter(title=title, author=author).exists()
+        ):
+            raise serializers.ValidationError(message)
+        return attrs
+
     class Meta:
-        model = Title
-        fields = ['id', 'text', 'author', 'scope', 'pub_date']
+        model = Review
+        fields = ["id", "text", "author", "score", "pub_date"]
