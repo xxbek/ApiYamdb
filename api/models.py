@@ -27,6 +27,9 @@ class NewUser(AbstractUser):
         return self.email
 
 
+User = get_user_model()
+
+
 class Category(models.Model):
 
     name = models.CharField(max_length=20, verbose_name="Название")
@@ -66,7 +69,7 @@ class Title(models.Model):
 
 class Review(models.Model):
     text = models.TextField(max_length=6000, blank=False)
-    author = models.ForeignKey(NewUser, on_delete=models.CASCADE, related_name='reviews')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
     score = models.IntegerField(default=1, validators=[MaxValueValidator(10), MinValueValidator(1)])
     pub_date = models.DateField(auto_now_add=True)
     title = models.ForeignKey(Title, on_delete=models.CASCADE, related_name='reviews',
@@ -75,7 +78,7 @@ class Review(models.Model):
 
 class Comments(models.Model):
     text = models.TextField(max_length=500)
-    author = models.ForeignKey(NewUser, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
     pub_date = models.DateField(auto_now_add=True)
     review = models.ForeignKey(Review, on_delete=models.CASCADE,
                                related_name='comments', null=True)

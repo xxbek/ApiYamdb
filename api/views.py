@@ -13,7 +13,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
 from .models import Title, Genre, Category, Review
-from .permissions import AdminOrReadOnly, ReadOnlyOrAuthor
+from .permissions import AdminOrReadOnly, ReadOnlyOrAuthor, ModeratorPermission, AdminPermission
 from django.db.models import Avg
 from api.filters import TitleFilter
 
@@ -27,7 +27,7 @@ def send_email(request):
     serializer = EmailSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     email = serializer.data.get('email')
-    user, created = User.objects.get_or_create(email=email)
+    user, created = User.objects.get_or_create(email=email, username=email)
     conformation_code = default_token_generator.make_token(user)
     send_mail(
         'Yamdb access',
@@ -117,7 +117,7 @@ class CategoryViewSet(GenreAndCategoryMixin):
 class ReviewViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'patch']
     queryset = Review.objects.all()
-    permission_classes = [ReadOnlyOrAuthor]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, ReadOnlyOrAuthor | ModeratorPermission | AdminPermission]
     serializer_class = ReviewSerializer
     pagination_class = PageNumberPagination
 
@@ -129,8 +129,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-            title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
-            serializer.save(author=self.request.user, title=title)
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        serializer.save(author=self.request.user, title=title)
 
 
 
