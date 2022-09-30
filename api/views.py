@@ -6,13 +6,13 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes, action
 from .serializers import EmailSerializer, ConformationCodeSerializer, UsersSerializer, \
-    TitleSerializer, GenreSerializer, CategorySerializer, ReviewSerializer
+    TitleSerializer, GenreSerializer, CategorySerializer, ReviewSerializer, CommentSerializer
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
 from rest_framework_simplejwt.tokens import AccessToken
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
-from .models import Title, Genre, Category, Review
+from .models import Title, Genre, Category, Review, Comments
 from .permissions import AdminOrReadOnly, ReadOnlyOrAuthor, ModeratorPermission, AdminPermission
 from django.db.models import Avg
 from api.filters import TitleFilter
@@ -58,7 +58,7 @@ class ObtainToken(APIView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by('id')
     serializer_class = UsersSerializer
     permission_classes = [permissions.IsAdminUser, ]
 
@@ -86,7 +86,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all().annotate(rating=Avg("reviews__score"))
+    queryset = Title.objects.all().annotate(rating=Avg("reviews__score")).order_by('id')
     http_method_names = ['get', 'post', 'delete', 'patch']
     permission_classes = [AdminOrReadOnly]
     pagination_class = PageNumberPagination
@@ -105,18 +105,18 @@ class GenreAndCategoryMixin(mixins.ListModelMixin,
 
 
 class GenreViewSet(GenreAndCategoryMixin):
-    queryset = Genre.objects.all()
+    queryset = Genre.objects.all().order_by('id')
     serializer_class = GenreSerializer
 
 
 class CategoryViewSet(GenreAndCategoryMixin):
-    queryset = Category.objects.all()
+    queryset = Category.objects.all().order_by('id')
     serializer_class = CategorySerializer
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'patch']
-    queryset = Review.objects.all()
+    queryset = Review.objects.all().order_by('id')
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, ReadOnlyOrAuthor | ModeratorPermission | AdminPermission]
     serializer_class = ReviewSerializer
     pagination_class = PageNumberPagination
@@ -126,11 +126,27 @@ class ReviewViewSet(viewsets.ModelViewSet):
         title = get_object_or_404(Title, pk=self.kwargs["title_id"])
         if title is not None:
             queryset = Review.objects.filter(title=self.kwargs.get("title_id"))
-        return queryset
+        return queryset.order_by('id')
 
     def perform_create(self, serializer):
         title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
         serializer.save(author=self.request.user, title=title)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    serializer_class = CommentSerializer
+    queryset = Comments.objects.all()
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, ReadOnlyOrAuthor | ModeratorPermission | AdminPermission]
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        # review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
+        queryset = Comments.objects.filter(review=self.kwargs.get('review_id'))
+        return queryset.order_by('id')
+
+    def perform_create(self, serializer):
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
+        serializer.save(author=self.request.user, review=review)
 
 
 
